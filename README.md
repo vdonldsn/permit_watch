@@ -35,8 +35,14 @@ create table permit_leads (
 ## 3. Environment variables (Railway → Variables tab)
 
 - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
-- `SOCRATA_APP_TOKEN` — free, sign in at data.nashville.gov → account → app tokens.
-  Not required, but avoids rate limiting once this runs daily.
+- `SOCRATA_APP_TOKEN` — **skip this one.** Metro migrated their open data portal onto
+  ArcGIS Hub, so getting a token now means signing in through Esri's ArcGIS OAuth,
+  which needs a separate ArcGIS Online account (not a Nashville account) — not worth
+  it for a once-a-day pull of ~200 rows. Just leave this env var unset; the code
+  already handles that (`_headers()` returns `{}` and the request goes out
+  unauthenticated, which is normal for occasional low-volume SODA API use). Only
+  revisit this if you start seeing 429 rate-limit errors, which is unlikely at this
+  volume.
 - `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`, `ALERT_EMAIL_TO` — optional, email alerts are
   silently skipped if these aren't set. `GMAIL_APP_PASSWORD` is NOT your normal Gmail
   password — generate one at myaccount.google.com/apppasswords (requires 2-Step
