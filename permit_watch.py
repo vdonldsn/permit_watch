@@ -42,7 +42,14 @@ SEEN_FILE = "seen_permits.json"  # local-only dedupe for testing — see app.py 
 
 
 def _headers():
-    return {"X-App-Token": APP_TOKEN} if APP_TOKEN else {}
+    headers = {
+        # Some endpoints silently reject the default "python-requests/x.x" UA —
+        # a real-looking one avoids that without doing anything shady.
+        "User-Agent": "Mozilla/5.0 (compatible; permit-watch/1.0; +https://data.nashville.gov)"
+    }
+    if APP_TOKEN:
+        headers["X-App-Token"] = APP_TOKEN
+    return headers
 
 
 def inspect_field_values(field="permit_type_description", days=30):
@@ -89,7 +96,14 @@ def fetch_new_permits():
 
     resp = requests.get(BASE_URL, params=params, headers=_headers(), timeout=30)
     resp.raise_for_status()
-    return resp.json()
+    try:
+        return resp.json()
+    except requests.exceptions.JSONDecodeError:
+        # Surface what actually came back instead of a bare, useless JSONDecodeError.
+        raise RuntimeError(
+            f"Socrata returned a non-JSON response. Status: {resp.status_code}. "
+            f"First 500 chars of body: {resp.text[:500]!r}"
+        )
 
 
 def main():
