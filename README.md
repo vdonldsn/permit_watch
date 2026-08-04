@@ -3,15 +3,21 @@
 Pulls newly issued building permits from data.nashville.gov and flags the ones worth
 calling about for temp fencing work.
 
-## 1. Before you trust the filters
+## 1. Before you trust the filters — REQUIRED, not optional
 
-Run this once by hand to see what values actually come back, then adjust
-`RELEVANT_PERMIT_TYPES` and `MIN_CONST_COST` in `permit_watch.py` to match:
+The data source changed platforms (see the top of `permit_watch.py` for the full story
+— Nashville's old Socrata API endpoint is dead, this now runs on ArcGIS's REST API
+instead). Run this once by hand before doing anything else:
 
 ```bash
 pip install requests
-python -c "from permit_watch import inspect_field_values; inspect_field_values()"
+python -c "from permit_watch import inspect_fields; inspect_fields()"
 ```
+
+It prints every real field name on the live layer. Compare that output against
+`FIELD_MAP` near the top of `permit_watch.py` and fix any names that don't match —
+if you skip this, `fetch_new_permits()` won't error, it'll just silently return
+nothing, which is a much easier problem to miss.
 
 ## 2. Supabase table
 
@@ -35,18 +41,13 @@ create table permit_leads (
 ## 3. Environment variables (Railway → Variables tab)
 
 - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
-- `SOCRATA_APP_TOKEN` — **skip this one.** Metro migrated their open data portal onto
-  ArcGIS Hub, so getting a token now means signing in through Esri's ArcGIS OAuth,
-  which needs a separate ArcGIS Online account (not a Nashville account) — not worth
-  it for a once-a-day pull of ~200 rows. Just leave this env var unset; the code
-  already handles that (`_headers()` returns `{}` and the request goes out
-  unauthenticated, which is normal for occasional low-volume SODA API use). Only
-  revisit this if you start seeing 429 rate-limit errors, which is unlikely at this
-  volume.
 - `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`, `ALERT_EMAIL_TO` — optional, email alerts are
   silently skipped if these aren't set. `GMAIL_APP_PASSWORD` is NOT your normal Gmail
   password — generate one at myaccount.google.com/apppasswords (requires 2-Step
   Verification on the account, which you should have anyway). Free, takes a minute.
+
+(There's no more `SOCRATA_APP_TOKEN` — that was for the old Socrata API, which no
+longer exists for this dataset. Not applicable anymore.)
 
 ## 4. Deploy the FastAPI service to Railway
 
